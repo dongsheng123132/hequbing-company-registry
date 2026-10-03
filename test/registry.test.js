@@ -4,7 +4,7 @@ import { mkdtemp, rm, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { once } from 'node:events';
-import { createStore, readJson } from '../src/store.js';
+import { createStore, createSnapshotStore, atomicJson, readJson } from '../src/store.js';
 import { execute, actions } from '../src/core.js';
 import { validateCompany, validate, proposalSchema } from '../src/schema.js';
 import { bindings, openapi } from '../src/contracts.js';
@@ -86,6 +86,20 @@ test('公开导出不泄露投稿／令牌，独立站与子路径共用稳定 I
   }
   assert.equal(new Set(bindings.map(b=>b[2])).size,actions.length);
   const result=await build(store,{outDir:join(dir,'public')});assert.ok(result.files.includes('SKILL.md'));
+});
+test('发布构建只读 Git 快照，不采用陈旧运行状态或未发布审核结果',async t=>{
+  const {store,dir}=await setup(t),path=join(dir,'catalog.json');
+  const catalog=await execute(store,'catalog.export');await atomicJson(path,catalog);
+  await accept(store,await execute(store,'proposal.submit',proposal('unpublished'),alice));
+  const snapshot=createSnapshotStore(path);
+  const files=await publicFiles(snapshot);
+  assert.equal(JSON.parse(files.get('catalog.json')).records.length,2);
+  assert.ok(!files.has('companies/company-unpublished.json'));
+  await atomicJson(path,await execute(store,'catalog.export'));
+  assert.equal((await execute(snapshot,'catalog.export')).records.length,3);
+  await assert.rejects(snapshot.update(()=>{}),code('READ_ONLY'));
+  await atomicJson(path,{...catalog,revision:'broken'});
+  await assert.rejects(snapshot.load(),code('INVALID_SNAPSHOT'));
 });
 test('HTTP 真实闭环：查询→校验→投稿→审核→公开，包含认证与错误边界',async t=>{
   const {store}=await setup(t);

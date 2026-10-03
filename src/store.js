@@ -1,11 +1,25 @@
 import { mkdir, open, readFile, rename, copyFile, unlink } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { randomUUID } from 'node:crypto';
+import { validateCompany } from './schema.js';
 
 export class RegistryError extends Error {
   constructor(code, message, status = 400, details) { super(message); Object.assign(this, { code, status, details }); }
 }
 export async function readJson(path) { return JSON.parse((await readFile(path, 'utf8')).replace(/^\uFEFF/, '')); }
+export function snapshotState(snapshot) {
+  if (!snapshot || snapshot.schemaVersion !== '1.0' || !Number.isSafeInteger(snapshot.revision) || snapshot.revision < 1 ||
+      !Array.isArray(snapshot.records) || snapshot.records.some(r => !r || validateCompany(r.company).length || !Number.isSafeInteger(r.version) || r.version < 1 || r.verification !== 'source_recorded') ||
+      new Set(snapshot.records.map(r => r.company.id)).size !== snapshot.records.length) {
+    throw new RegistryError('INVALID_SNAPSHOT', '公开快照格式不合法。', 422);
+  }
+  return { schemaVersion: '1.0', revision: snapshot.revision, proposals: {}, companies: Object.fromEntries(snapshot.records.map(record => [record.company.id, {
+    ...record, history: [{ version: record.version, at: record.updatedAt, company: record.company }],
+  }])) };
+}
+export function createSnapshotStore(path) {
+  return { load: async () => snapshotState(await readJson(path)), update: async () => { throw new RegistryError('READ_ONLY', '公开快照只能读取。', 403); } };
+}
 export async function atomicJson(path, value) {
   await mkdir(dirname(path), { recursive: true });
   const temp = `${path}.${randomUUID()}.tmp`;
@@ -48,9 +62,7 @@ export function createStore(directory) {
           company, version: 1, publishedAt: now, updatedAt: now,
           verification: 'source_recorded', history: [{ version: 1, at: now, company }],
         }]));
-        if (snapshot) companies = Object.fromEntries(snapshot.records.map((record) => [record.company.id, {
-          ...record, history: [{ version: record.version, at: record.updatedAt, company: record.company }],
-        }]));
+        if (snapshot) companies = snapshotState(snapshot).companies;
         await atomicJson(path, { schemaVersion: '1.0', revision: snapshot?.revision ?? 1, companies, proposals: {}, createdAt: now });
         return { initialized: true, count: Object.keys(companies).length };
       });

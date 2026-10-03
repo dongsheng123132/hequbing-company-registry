@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { resolve, join } from 'node:path';
 import { randomBytes } from 'node:crypto';
-import { createStore, readJson, atomicJson, withLock, RegistryError } from './store.js';
+import { createStore, createSnapshotStore, snapshotState, readJson, atomicJson, withLock, RegistryError } from './store.js';
 import { execute } from './core.js';
 import { validateCompany } from './schema.js';
 import { build, ROOT } from './publish.js';
@@ -23,7 +23,7 @@ try {
     if(errors.length)throw new RegistryError('INVALID_SEED','初始数据未通过校验。',422,errors);
     let snapshot;
     if(!options.seed)try{snapshot=await readJson(join(ROOT,'data/catalog.json'));}catch(e){if(e.code!=='ENOENT')throw e;}
-    if(snapshot && (!Array.isArray(snapshot.records) || snapshot.records.some(r=>validateCompany(r.company).length || !Number.isSafeInteger(r.version) || r.version<1) || new Set(snapshot.records.map(r=>r.company.id)).size!==snapshot.records.length))throw new RegistryError('INVALID_SNAPSHOT','公开快照格式不合法。',422);
+    if(snapshot)snapshotState(snapshot);
     output(await store.init(seed, snapshot));
   } else if(command==='actor.create') {
     if(!/^[a-z0-9][a-z0-9-]{0,79}$/.test(options.id??'')||!['contributor','reviewer'].includes(options.role))throw new RegistryError('ARGUMENT_ERROR','需要 --id 与 --role contributor|reviewer。');
@@ -37,7 +37,10 @@ try {
     const input=options.input?await readJson(resolve(options.input)):{};
     output(await execute(store,positional[0],input,{id:'local-maintainer',role:'reviewer'}));
   } else if(command==='build') {
-    output(await build(store,{basePath,transport:options.transport??'github',...(options.out?{outDir:resolve(options.out)}:{})}));
+    const source=options.source??'published';
+    if(!['published','runtime'].includes(source))throw new RegistryError('ARGUMENT_ERROR','--source 仅支持 published 或 runtime。');
+    const buildStore=source==='published'?createSnapshotStore(join(ROOT,'data/catalog.json')):store;
+    output(await build(buildStore,{basePath,transport:options.transport??'github',...(options.out?{outDir:resolve(options.out)}:{})}));
   } else if(command==='snapshot') {
     const catalog=await execute(store,'catalog.export');await atomicJson(join(ROOT,'data/catalog.json'),catalog);
     output({path:join(ROOT,'data/catalog.json'),revision:catalog.revision,contentHash:catalog.contentHash});

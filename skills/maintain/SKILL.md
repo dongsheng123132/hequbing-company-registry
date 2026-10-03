@@ -30,6 +30,6 @@ node src/cli.js actor.create --id reviewer --role reviewer
 
 CLI `action` 是本地主机维护入口，使用维护者权限；HTTP 角色来自令牌，正文不能指定角色。审核顺序：`proposal.list` → 查来源、主体、证书适用范围、公开授权 → `proposal.review`。接受仅表示收录来源资料，尚不支持独立认证标章。不通过赞助或服务订单改变资料审核、抽样与名次。
 
-构建默认输出 `dist/`；`--out <目录>` 可指定嵌入宿主网站。默认 transport=github；接通持久化服务后才能 `build --transport http` 并将 `/observe/api/v1/` 反向代理到服务。不要在 Vercel 临时文件系统部署写入状态。生产升级保留 `.local/`，先备份再重启；不得将它、actors.json、原始客户素材与 AI 私有回答发布到 GitHub。
+构建默认只读 Git 中的 `data/catalog.json`，无需 init；审核后先 snapshot 再构建。显式 `build --source runtime` 才采用本地运行状态。默认输出 `dist/`；`--out <目录>` 可指定嵌入宿主网站。默认 transport=github；接通持久化服务后才能 `build --transport http` 并将 `/observe/api/v1/` 反向代理到服务。不要在 Vercel 临时文件系统部署写入状态。生产升级保留 `.local/`，先备份再重启；不得将它、actors.json、原始客户素材与 AI 私有回答发布到 GitHub。
 
 复用：企业身份／来源分层参考 Open Supply Hub（https://github.com/opensupplyhub/open-supply-hub）；认知引擎沿用项目 engine/，与目录查询排序独立。新增领域扩展 category 与 offering，不按国家复制企业。现有榜单实体需人工确认后映射稳定企业 ID，不自动把同名视为同一主体。
