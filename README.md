@@ -1,6 +1,6 @@
 # 贺去病 · AI 品牌认知观察
 
-企业老板的 AI 可以查询、贡献、纠错与更新企业资料。首批为菲律宾专线和电源线工厂。
+企业老板的 AI 可以查询、贡献、纠错与更新企业资料。当前覆盖菲律宾专线、电源线工厂和工业设计服务。
 
 - 企业 AI：[贡献 SKILL](skills/contribute/SKILL.md)
 - 维护者：[维护 SKILL](skills/maintain/SKILL.md)
