@@ -23,7 +23,7 @@ export function manifest(basePath, transport = 'http') {
     capabilities: { search: true, contribution: true, correction: true, inquiryDraft: true, quoteSubmission: false, payment: false },
     actions: actions.map((a) => ({ ...a, http: transport === 'http' ? bindings.filter((v) => v[2] === a.id).map(([method, path]) => ({ method, path: `${b}/api/v1${path}` })) : [] })),
     dataPolicy: '仅企业公开资料；投稿须声明公开授权；收录不等于资质认证。私有需求不进入公开快照。',
-    ranking: { status: 'separate-module', engine: 'ai-recognition-index', link: null, notice: '目录顺序不代表排名；采样不足时不出榜。' },
+    ranking: { status: 'separate-module', engine: 'ai-recognition-index', link: 'https://www.hequbing.com/observe/rankings/', notice: '已发布调查范围与进度；目录顺序不代表排名，采样不足时不出榜。' },
     extensions: { quotes: { status: 'reserved', required: ['companyId', 'offeringId', 'requestId', 'currency', 'unit', 'quantity', 'taxes', 'validUntil', 'visibility', 'expectedVersion', 'idempotencyKey'] } },
   };
 }
